@@ -1,0 +1,35 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Outfit", ui-sans-serif, system-ui, sans-serif;
+}
+
+@layer base {
+  body {
+    @apply font-sans text-slate-900 antialiased bg-[#F8FAFC];
+  }
+  
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-display tracking-tight;
+  }
+}
+
+@layer components {
+  .glass-card {
+    @apply bg-white/80 backdrop-blur-md border border-white/20 shadow-xl;
+  }
+  
+  .official-card {
+    @apply bg-white border border-slate-200/60 shadow-[0_2px_4px_rgba(0,0,0,0.02),0_1px_0_rgba(0,0,0,0.02)] rounded-2xl transition-all duration-300 hover:shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:border-slate-300/50;
+  }
+
+  .official-button-primary {
+    @apply bg-slate-900 text-white font-semibold px-6 py-3 rounded-xl transition-all duration-200 hover:bg-slate-800 active:scale-[0.98] shadow-sm;
+  }
+
+  .official-button-secondary {
+    @apply bg-white text-slate-700 border border-slate-200 font-semibold px-6 py-3 rounded-xl transition-all duration-200 hover:bg-slate-50 hover:border-slate-300 active:scale-[0.98] shadow-sm;
+  }
+}
