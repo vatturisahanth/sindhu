@@ -1,77 +1,79 @@
 import { UserProfile, CategoryBudget, Expense, AIAlert, Goal } from '../types';
 
 const STORAGE_KEYS = {
-  USER: 'smartbudget_user',
-  CATEGORIES: 'smartbudget_categories',
-  EXPENSES: 'smartbudget_expenses',
-  ALERTS: 'smartbudget_alerts',
-  GOALS: 'smartbudget_goals',
+  USER: 'arthmitra_user',
+  CATEGORIES: 'arthmitra_categories',
+  EXPENSES: 'arthmitra_expenses',
+  ALERTS: 'arthmitra_alerts',
+  GOALS: 'arthmitra_goals',
 };
 
+const getScopedKey = (key: string, userId: string) => `${key}_${userId}`;
+
 export const storageService = {
-  getUserProfile: (): UserProfile | null => {
-    const data = localStorage.getItem(STORAGE_KEYS.USER);
+  getUserProfile: (userId: string): UserProfile | null => {
+    const data = localStorage.getItem(getScopedKey(STORAGE_KEYS.USER, userId));
     return data ? JSON.parse(data) : null;
   },
 
-  setUserProfile: (profile: UserProfile) => {
-    localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(profile));
+  setUserProfile: (userId: string, profile: UserProfile) => {
+    localStorage.setItem(getScopedKey(STORAGE_KEYS.USER, userId), JSON.stringify(profile));
   },
 
-  getCategories: (): CategoryBudget[] => {
-    const data = localStorage.getItem(STORAGE_KEYS.CATEGORIES);
+  getCategories: (userId: string): CategoryBudget[] => {
+    const data = localStorage.getItem(getScopedKey(STORAGE_KEYS.CATEGORIES, userId));
     return data ? JSON.parse(data) : [];
   },
 
-  setCategories: (categories: CategoryBudget[]) => {
-    localStorage.setItem(STORAGE_KEYS.CATEGORIES, JSON.stringify(categories));
+  setCategories: (userId: string, categories: CategoryBudget[]) => {
+    localStorage.setItem(getScopedKey(STORAGE_KEYS.CATEGORIES, userId), JSON.stringify(categories));
   },
 
-  getExpenses: (): Expense[] => {
-    const data = localStorage.getItem(STORAGE_KEYS.EXPENSES);
+  getExpenses: (userId: string): Expense[] => {
+    const data = localStorage.getItem(getScopedKey(STORAGE_KEYS.EXPENSES, userId));
     return data ? JSON.parse(data) : [];
   },
 
-  addExpense: (expense: Expense) => {
-    const expenses = storageService.getExpenses();
+  addExpense: (userId: string, expense: Expense) => {
+    const expenses = storageService.getExpenses(userId);
     expenses.unshift(expense);
-    localStorage.setItem(STORAGE_KEYS.EXPENSES, JSON.stringify(expenses));
+    localStorage.setItem(getScopedKey(STORAGE_KEYS.EXPENSES, userId), JSON.stringify(expenses));
   },
 
-  getAlerts: (): AIAlert[] => {
-    const data = localStorage.getItem(STORAGE_KEYS.ALERTS);
+  getAlerts: (userId: string): AIAlert[] => {
+    const data = localStorage.getItem(getScopedKey(STORAGE_KEYS.ALERTS, userId));
     return data ? JSON.parse(data) : [];
   },
 
-  addAlert: (alert: AIAlert) => {
-    const alerts = storageService.getAlerts();
+  addAlert: (userId: string, alert: AIAlert) => {
+    const alerts = storageService.getAlerts(userId);
     alerts.unshift(alert);
-    localStorage.setItem(STORAGE_KEYS.ALERTS, JSON.stringify(alerts.slice(0, 10)));
+    localStorage.setItem(getScopedKey(STORAGE_KEYS.ALERTS, userId), JSON.stringify(alerts.slice(0, 10)));
   },
 
-  getGoals: (): Goal[] => {
-    const data = localStorage.getItem(STORAGE_KEYS.GOALS);
+  getGoals: (userId: string): Goal[] => {
+    const data = localStorage.getItem(getScopedKey(STORAGE_KEYS.GOALS, userId));
     return data ? JSON.parse(data) : [];
   },
 
-  addGoal: (goal: Goal) => {
-    const goals = storageService.getGoals();
+  addGoal: (userId: string, goal: Goal) => {
+    const goals = storageService.getGoals(userId);
     goals.unshift(goal);
-    localStorage.setItem(STORAGE_KEYS.GOALS, JSON.stringify(goals));
+    localStorage.setItem(getScopedKey(STORAGE_KEYS.GOALS, userId), JSON.stringify(goals));
   },
 
-  updateGoal: (updatedGoal: Goal) => {
-    const goals = storageService.getGoals();
+  updateGoal: (userId: string, updatedGoal: Goal) => {
+    const goals = storageService.getGoals(userId);
     const index = goals.findIndex(g => g.id === updatedGoal.id);
     if (index !== -1) {
       goals[index] = updatedGoal;
-      localStorage.setItem(STORAGE_KEYS.GOALS, JSON.stringify(goals));
+      localStorage.setItem(getScopedKey(STORAGE_KEYS.GOALS, userId), JSON.stringify(goals));
     }
   },
 
-  deleteGoal: (id: string) => {
-    const goals = storageService.getGoals();
+  deleteGoal: (userId: string, id: string) => {
+    const goals = storageService.getGoals(userId);
     const filtered = goals.filter(g => g.id !== id);
-    localStorage.setItem(STORAGE_KEYS.GOALS, JSON.stringify(filtered));
+    localStorage.setItem(getScopedKey(STORAGE_KEYS.GOALS, userId), JSON.stringify(filtered));
   },
 };

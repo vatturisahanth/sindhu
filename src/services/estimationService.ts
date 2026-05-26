@@ -29,31 +29,36 @@ export const estimationService = {
     // Base distributions
     if (lifestyle === 'student') {
       distribution = {
-        Food: 0.35,
-        Transport: 0.15,
-        Others: 0.30,
-        Savings: 0.20
+        'Food': 0.35,
+        'Education': 0.25,
+        'Entertainment': 0.15,
+        'Recharge': 0.05,
+        'Others': 0.10,
+        'Savings': 0.10
       };
       insights.push("As a student, focus on building a habit of saving even small amounts.");
       insights.push("Consider using student discounts for transport and food.");
     } else if (lifestyle === 'professional') {
       distribution = {
-        Food: 0.20,
-        Transport: 0.10,
-        Rent: 0.25,
-        Others: 0.20,
-        Savings: 0.25
+        'Food': 0.20,
+        'Transport': 0.10,
+        'Bills': 0.25,
+        'Shopping': 0.10,
+        'Recharge': 0.05,
+        'Others': 0.10,
+        'Savings': 0.20
       };
       insights.push("Working professionals should aim for at least 20% savings for long-term goals.");
-      insights.push("Try to keep your rent below 30% of your total income.");
+      insights.push("Try to keep your rent/bills below 30% of your total income.");
     } else { // family
       distribution = {
-        Food: 0.25,
-        Transport: 0.10,
-        Rent: 0.20,
-        Utilities: 0.15,
-        Others: 0.10,
-        Savings: 0.20
+        'Food': 0.25,
+        'Education': 0.15,
+        'Bills': 0.20,
+        'Health': 0.10,
+        'Transport': 0.05,
+        'Others': 0.10,
+        'Savings': 0.15
       };
       insights.push("Family budgets require careful tracking of utility and grocery costs.");
       insights.push("Emergency funds are critical for family financial security.");
@@ -61,12 +66,12 @@ export const estimationService = {
 
     // City type adjustments
     if (cityType === 'urban') {
-      if (distribution['Rent']) distribution['Rent'] += 0.05;
+      if (distribution['Bills']) distribution['Bills'] += 0.05;
       if (distribution['Transport']) distribution['Transport'] += 0.05;
       distribution['Savings'] -= 0.10;
       insights.push("Urban living often comes with higher rent and commute costs.");
     } else {
-      if (distribution['Rent']) distribution['Rent'] -= 0.05;
+      if (distribution['Bills']) distribution['Bills'] -= 0.05;
       distribution['Savings'] += 0.05;
       insights.push("Rural areas typically offer lower cost of living, allowing for higher savings.");
     }

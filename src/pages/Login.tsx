@@ -6,22 +6,27 @@ import { useAuth } from '../context/AuthContext';
 import { cn } from '../lib/utils';
 
 export default function Login() {
+  const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
-  const { login, googleLogin } = useAuth();
+  const { login, signup, googleLogin } = useAuth();
 
-  const handleLogin = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     setError(null);
     try {
-      await login(email, password);
+      if (isLogin) {
+        await login(email, password);
+      } else {
+        await signup(email, password);
+      }
       navigate('/');
     } catch (err: any) {
-      setError(err.message || 'Failed to sign in');
+      setError(err.message || `Failed to ${isLogin ? 'sign in' : 'sign up'}`);
     } finally {
       setIsLoading(false);
     }
@@ -51,9 +56,9 @@ export default function Login() {
           <div className="bg-indigo-600 p-4 rounded-2xl mb-4 shadow-lg shadow-indigo-200">
             <Wallet className="text-white w-8 h-8" />
           </div>
-          <h1 className="text-3xl font-bold text-slate-900">SmartBudget AI</h1>
+          <h1 className="text-3xl font-bold text-slate-900">Arthmitra AI</h1>
           <p className="text-slate-500 mt-2 text-center">
-            Welcome back! Let’s manage your budget 💰
+            {isLogin ? 'Sign in to access your financial intelligence 💰' : 'Create an account to start your AI financial journey 🚀'}
           </p>
         </div>
 
@@ -68,7 +73,7 @@ export default function Login() {
           </motion.div>
         )}
 
-        <form onSubmit={handleLogin} className="space-y-6">
+        <form onSubmit={handleSubmit} className="space-y-6">
           <div className="space-y-2">
             <label className="text-sm font-semibold text-slate-700 ml-1">Email Address</label>
             <div className="relative">
@@ -109,11 +114,20 @@ export default function Login() {
             ) : (
               <>
                 <LogIn className="w-5 h-5" />
-                Sign In
+                {isLogin ? 'Sign In' : 'Sign Up'}
               </>
             )}
           </button>
         </form>
+
+        <div className="mt-6 text-center">
+          <button
+            onClick={() => setIsLogin(!isLogin)}
+            className="text-sm font-bold text-indigo-600 hover:text-indigo-700 transition-colors"
+          >
+            {isLogin ? "Don't have an account? Sign Up" : "Already have an account? Sign In"}
+          </button>
+        </div>
 
         <div className="relative my-8">
           <div className="absolute inset-0 flex items-center">

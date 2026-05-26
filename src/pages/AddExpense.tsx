@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
-import { Plus, IndianRupee, FileText, Sparkles, CheckCircle2, ChevronRight, Utensils, Car, ShoppingBag, Film, HeartPulse, Zap, MoreHorizontal } from 'lucide-react';
+import { Plus, IndianRupee, FileText, Sparkles, CheckCircle2, ChevronRight, Utensils, Car, ShoppingBag, Film, HeartPulse, Zap, MoreHorizontal, GraduationCap, CreditCard, Smartphone, Receipt, Wallet } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { storageService } from '../services/storageService';
 import { cn } from '../lib/utils';
@@ -31,7 +31,7 @@ export default function AddExpense() {
 
     setIsLoading(true);
     try {
-      storageService.addExpense({
+      storageService.addExpense(user.uid, {
         id: Math.random().toString(36).substr(2, 9),
         userId: user.uid,
         amount: amount,
@@ -41,11 +41,11 @@ export default function AddExpense() {
       });
 
       // Update category spent
-      const categories = storageService.getCategories();
+      const categories = storageService.getCategories(user.uid);
       const catIndex = categories.findIndex(c => c.name === (detectedCategory?.category || 'Others'));
       if (catIndex !== -1) {
         categories[catIndex].spent += amount;
-        storageService.setCategories(categories);
+        storageService.setCategories(user.uid, categories);
       }
 
       navigate('/');
@@ -57,13 +57,16 @@ export default function AddExpense() {
   };
 
   const categoryIcons: Record<string, any> = {
-    Food: Utensils,
-    Transport: Car,
-    Shopping: ShoppingBag,
-    Entertainment: Film,
-    Health: HeartPulse,
-    Utilities: Zap,
-    Others: MoreHorizontal,
+    'Food': Utensils,
+    'Transport': Car,
+    'Shopping': ShoppingBag,
+    'Education': GraduationCap,
+    'Bills': Receipt,
+    'Entertainment': Film,
+    'Health': HeartPulse,
+    'Savings': Wallet,
+    'Recharge': Smartphone,
+    'Others': MoreHorizontal,
   };
 
   const Icon = detectedCategory ? categoryIcons[detectedCategory.category] || MoreHorizontal : MoreHorizontal;

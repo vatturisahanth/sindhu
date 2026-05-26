@@ -166,30 +166,109 @@ export const analysisService = {
   } => {
     if (!profile) return { achievable: false, requiredMonthly: 0, currentMonthlySavings: 0, suggestions: [] };
 
-    const now = Date.now();
-    const monthsRemaining = Math.max(1, (goal.deadline - now) / (1000 * 60 * 60 * 24 * 30));
+    const now = new Date();
+    const monthsRemaining = Math.max(0.5, (goal.deadline - now.getTime()) / (1000 * 60 * 60 * 24 * 30.44));
     const remainingAmount = goal.targetAmount - goal.currentAmount;
     const requiredMonthly = remainingAmount / monthsRemaining;
 
-    const totalSpent = expenses.reduce((acc, curr) => acc + curr.amount, 0);
-    const currentMonthlySavings = profile.monthlyIncome - totalSpent;
+    // Calculate current month's spending
+    const currentMonth = now.getMonth();
+    const currentYear = now.getFullYear();
+    const currentMonthExpenses = expenses.filter(exp => {
+      const d = new Date(exp.timestamp);
+      return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
+    });
+    
+    const totalSpentThisMonth = currentMonthExpenses.reduce((acc, curr) => acc + curr.amount, 0);
+    const currentMonthlySavings = profile.monthlyIncome - totalSpentThisMonth;
 
     const achievable = currentMonthlySavings >= requiredMonthly;
     const suggestions: string[] = [];
 
     if (!achievable) {
-      const gap = requiredMonthly - currentMonthlySavings;
-      suggestions.push(`❌ Problem: You need to save ₹${Math.round(requiredMonthly)}/month, but you're currently saving ₹${Math.round(currentMonthlySavings)}/month.`);
-      suggestions.push(`💡 Suggestion 1: Reduce monthly expenses by ₹${Math.round(gap)} to stay on track.`);
-      suggestions.push(`💡 Suggestion 2: Extend the timeline to ${Math.round(monthsRemaining * (requiredMonthly / currentMonthlySavings))} months.`);
-      suggestions.push(`💡 Suggestion 3: Consider a low-interest loan for the remaining ₹${Math.round(remainingAmount)}.`);
+      const savingsPercentage = (requiredMonthly / profile.monthlyIncome) * 100;
+
+      if (savingsPercentage > 50) {
+        suggestions.push(`⚠️ High Risk: This goal requires saving a very high percentage of your income. This may be unsustainable.`);
+      }
+
+      suggestions.push(`📉 Savings Gap: Your current monthly savings rate is below what's needed to reach this goal by the deadline.`);
+      
+      if (requiredMonthly > currentMonthlySavings) {
+        suggestions.push(`💡 Strategy: Consider reducing monthly spending or extending the deadline to stay on track.`);
+      }
+      
+      suggestions.push(`🏦 Advice: Consider a recurring deposit or a goal-based mutual fund to automate your savings.`);
     } else {
-      suggestions.push("✅ You are on track to achieve this goal! Keep it up.");
-      if (currentMonthlySavings > requiredMonthly * 1.2) {
-        suggestions.push("📈 You have extra surplus. Consider investing the additional savings to reach your goal faster.");
+      suggestions.push("✅ Financial Analysis: Your current savings rate is sufficient to reach this goal by the deadline.");
+      if (currentMonthlySavings > requiredMonthly * 1.5) {
+        suggestions.push("🚀 Accelerator: You have a significant surplus. You could achieve this goal much earlier if you prioritize it.");
       }
     }
 
     return { achievable, requiredMonthly, currentMonthlySavings, suggestions };
+  },
+
+  analyzeLongTermTrends: (expenses: Expense[]): AIAlert[] => {
+    if (expenses.length < 20) return [];
+
+    const alerts: AIAlert[] = [];
+    const now = new Date();
+    const monthsData: Record<string, { total: number, categories: Record<string, number> }> = {};
+
+    // Group by month
+    expenses.forEach(exp => {
+      const date = new Date(exp.timestamp);
+      const monthKey = `${date.getFullYear()}-${date.getMonth()}`;
+      if (!monthsData[monthKey]) {
+        monthsData[monthKey] = { total: 0, categories: {} };
+      }
+      monthsData[monthKey].total += exp.amount;
+      monthsData[monthKey].categories[exp.category] = (monthsData[monthKey].categories[exp.category] || 0) + exp.amount;
+    });
+
+    const monthKeys = Object.keys(monthsData).sort();
+    if (monthKeys.length < 3) return [];
+
+    // Analyze overall trend
+    const totals = monthKeys.map(k => monthsData[k].total);
+    const firstHalf = totals.slice(0, Math.floor(totals.length / 2));
+    const secondHalf = totals.slice(Math.floor(totals.length / 2));
+    
+    const avgFirst = firstHalf.reduce((a, b) => a + b, 0) / firstHalf.length;
+    const avgSecond = secondHalf.reduce((a, b) => a + b, 0) / secondHalf.length;
+
+    if (avgSecond > avgFirst * 1.2) {
+      alerts.push({
+        id: 'long-term-inflation',
+        userId: expenses[0].userId,
+        message: `📈 Long-term Trend: Your average monthly spending has increased by ${Math.round(((avgSecond - avgFirst) / avgFirst) * 100)}% over the last ${monthKeys.length} months. Consider a lifestyle audit.`,
+        type: 'warning',
+        timestamp: Date.now()
+      });
+    }
+
+    // Category specific trends
+    const categories = Array.from(new Set(expenses.map(e => e.category)));
+    categories.forEach(cat => {
+      const catTotals = monthKeys.map(k => monthsData[k].categories[cat] || 0);
+      const catFirst = catTotals.slice(0, Math.floor(catTotals.length / 2));
+      const catSecond = catTotals.slice(Math.floor(catTotals.length / 2));
+      
+      const avgCatFirst = catFirst.reduce((a, b) => a + b, 0) / catFirst.length;
+      const avgCatSecond = catSecond.reduce((a, b) => a + b, 0) / catSecond.length;
+
+      if (avgCatSecond > avgCatFirst * 1.5 && avgCatSecond > 1000) {
+        alerts.push({
+          id: `trend-${cat}`,
+          userId: expenses[0].userId,
+          message: `🔍 Insight: Your ${cat} expenses are trending upwards significantly. You're spending ₹${Math.round(avgCatSecond - avgCatFirst)} more per month than 6 months ago.`,
+          type: 'suggestion',
+          timestamp: Date.now()
+        });
+      }
+    });
+
+    return alerts;
   }
 };

@@ -10,6 +10,7 @@ interface AuthContextType {
   user: User | null;
   isLoading: boolean;
   login: (email: string, pass: string) => Promise<void>;
+  signup: (email: string, pass: string) => Promise<void>;
   googleLogin: () => Promise<void>;
   logout: () => Promise<void>;
 }
@@ -36,7 +37,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const login = async (email: string, pass: string) => {
     // Mock login
-    const user = { ...MOCK_USER, email };
+    const user = { ...MOCK_USER, email, uid: `user-${email.split('@')[0]}` };
+    setUser(user);
+    localStorage.setItem('smartbudget_auth', JSON.stringify(user));
+  };
+
+  const signup = async (email: string, pass: string) => {
+    // Mock signup
+    const user = { uid: `user-${Date.now()}`, email, displayName: null };
     setUser(user);
     localStorage.setItem('smartbudget_auth', JSON.stringify(user));
   };
@@ -53,7 +61,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, isLoading, login, googleLogin, logout }}>
+    <AuthContext.Provider value={{ user, isLoading, login, signup, googleLogin, logout }}>
       {children}
     </AuthContext.Provider>
   );

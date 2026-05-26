@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
@@ -23,6 +23,17 @@ export default function SmartEstimation() {
   const navigate = useNavigate();
   const { user } = useAuth();
 
+  useEffect(() => {
+    if (user) {
+      const profile = storageService.getUserProfile(user.uid);
+      if (profile) {
+        if (profile.monthlyIncome) setIncome(profile.monthlyIncome);
+        if (profile.lifestyle) setLifestyle(profile.lifestyle);
+        if (profile.cityType) setCityType(profile.cityType);
+      }
+    }
+  }, [user]);
+
   const handleEstimate = () => {
     if (!income || !lifestyle || !cityType) return;
     
@@ -43,26 +54,45 @@ export default function SmartEstimation() {
   const handleApplyBudget = () => {
     if (!user || !estimation) return;
 
+    const existingProfile = storageService.getUserProfile(user.uid);
+
     // Save profile
-    storageService.setUserProfile({
+    storageService.setUserProfile(user.uid, {
       uid: user.uid,
       email: user.email || '',
+      displayName: existingProfile?.displayName || '',
+      profession: existingProfile?.profession || '',
+      lifestyle: lifestyle || existingProfile?.lifestyle,
+      cityType: cityType || existingProfile?.cityType,
       monthlyIncome: income,
       savingsGoal: estimation.savings,
       currency: '₹',
-      createdAt: Date.now(),
+      createdAt: existingProfile?.createdAt || Date.now(),
     });
 
     // Save categories
-    const categoryBudgets: CategoryBudget[] = estimation.categories.map(cat => ({
-      id: cat.name.toLowerCase(),
-      userId: user.uid,
-      name: cat.name,
-      limit: cat.amount,
-      spent: 0,
-      color: cat.name === 'Food' ? 'bg-orange-500' : cat.name === 'Transport' ? 'bg-blue-500' : 'bg-slate-500',
-    }));
-    storageService.setCategories(categoryBudgets);
+    const categoryBudgets: CategoryBudget[] = estimation.categories.map(cat => {
+      let color = 'bg-slate-600';
+      if (cat.name === 'Food') color = 'bg-orange-600';
+      else if (cat.name === 'Transport') color = 'bg-blue-600';
+      else if (cat.name === 'Shopping') color = 'bg-purple-600';
+      else if (cat.name === 'Education') color = 'bg-indigo-600';
+      else if (cat.name === 'Bills') color = 'bg-rose-600';
+      else if (cat.name === 'Entertainment') color = 'bg-pink-600';
+      else if (cat.name === 'Health') color = 'bg-emerald-600';
+      else if (cat.name === 'Savings') color = 'bg-teal-600';
+      else if (cat.name === 'Recharge') color = 'bg-sky-600';
+
+      return {
+        id: cat.name.toLowerCase().replace(/\s+/g, '-'),
+        userId: user.uid,
+        name: cat.name,
+        limit: cat.amount,
+        spent: 0,
+        color,
+      };
+    });
+    storageService.setCategories(user.uid, categoryBudgets);
 
     navigate('/');
   };

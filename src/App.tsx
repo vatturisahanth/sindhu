@@ -9,6 +9,8 @@ import BudgetSetup from './pages/BudgetSetup';
 import AddExpense from './pages/AddExpense';
 import Reports from './pages/Reports';
 import SmartEstimation from './pages/SmartEstimation';
+import StatementUpload from './pages/StatementUpload';
+import Onboarding from './pages/Onboarding';
 
 export default function App() {
   return (
@@ -68,6 +70,26 @@ export default function App() {
                   <Layout>
                     <SmartEstimation />
                   </Layout>
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/statement-upload"
+              element={
+                <ProtectedRoute>
+                  <Layout>
+                    <StatementUpload />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/onboarding"
+              element={
+                <ProtectedRoute>
+                  <Onboarding />
                 </ProtectedRoute>
               }
             />

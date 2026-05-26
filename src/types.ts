@@ -3,6 +3,9 @@ export interface UserProfile {
   email: string;
   displayName?: string;
   photoURL?: string;
+  profession?: string;
+  lifestyle?: 'student' | 'professional' | 'family';
+  cityType?: 'urban' | 'rural';
   monthlyIncome: number;
   savingsGoal: number;
   currency: string;
@@ -35,6 +38,7 @@ export interface Goal {
   currentAmount: number;
   deadline: number; // timestamp
   createdAt: number;
+  isLiked?: boolean;
 }
 
 export interface AIAlert {

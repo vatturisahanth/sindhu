@@ -6,7 +6,9 @@ import {
   Lightbulb, CheckCircle2, X, ArrowRight,
   Utensils, Car, MoreHorizontal, ShoppingBag, 
   Film, HeartPulse, Zap, MessageSquare, Send,
-  Activity, Sparkles, PieChart, PlusCircle
+  Activity, Sparkles, PieChart, PlusCircle, FileUp,
+  GraduationCap, CreditCard, Smartphone, Receipt,
+  Heart, Trash2, Calendar, Target
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { storageService } from '../services/storageService';
@@ -17,33 +19,42 @@ import { GoogleGenAI } from "@google/genai";
 import { parseQuickExpense } from '../services/geminiService';
 
 const categoryIcons = {
-  Food: Utensils,
-  Transport: Car,
-  Shopping: ShoppingBag,
-  Entertainment: Film,
-  Health: HeartPulse,
-  Utilities: Zap,
-  Others: MoreHorizontal,
+  'Food': Utensils,
+  'Transport': Car,
+  'Shopping': ShoppingBag,
+  'Education': GraduationCap,
+  'Bills': Receipt,
+  'Entertainment': Film,
+  'Health': HeartPulse,
+  'Savings': Wallet,
+  'Recharge': Smartphone,
+  'Others': MoreHorizontal,
 };
 
 const categoryColors = {
-  Food: 'bg-orange-500',
-  Transport: 'bg-blue-500',
-  Shopping: 'bg-purple-500',
-  Entertainment: 'bg-pink-500',
-  Health: 'bg-rose-500',
-  Utilities: 'bg-amber-500',
-  Others: 'bg-slate-500',
+  'Food': 'bg-orange-600',
+  'Transport': 'bg-blue-600',
+  'Shopping': 'bg-purple-600',
+  'Education': 'bg-indigo-600',
+  'Bills': 'bg-rose-600',
+  'Entertainment': 'bg-pink-600',
+  'Health': 'bg-emerald-600',
+  'Savings': 'bg-teal-600',
+  'Recharge': 'bg-sky-600',
+  'Others': 'bg-slate-600',
 };
 
 const categoryBgs = {
-  Food: 'bg-orange-50',
-  Transport: 'bg-blue-50',
-  Shopping: 'bg-purple-50',
-  Entertainment: 'bg-pink-50',
-  Health: 'bg-rose-50',
-  Utilities: 'bg-amber-50',
-  Others: 'bg-slate-50',
+  'Food': 'bg-orange-50',
+  'Transport': 'bg-blue-50',
+  'Shopping': 'bg-purple-50',
+  'Education': 'bg-indigo-50',
+  'Bills': 'bg-rose-50',
+  'Entertainment': 'bg-pink-50',
+  'Health': 'bg-emerald-50',
+  'Savings': 'bg-teal-50',
+  'Recharge': 'bg-sky-50',
+  'Others': 'bg-slate-50',
 };
 
 export default function Dashboard() {
@@ -59,7 +70,32 @@ export default function Dashboard() {
   
   // Goal Modal State
   const [isGoalModalOpen, setIsGoalModalOpen] = useState(false);
+  const [selectedGoal, setSelectedGoal] = useState<Goal | null>(null);
   const [newGoal, setNewGoal] = useState({ title: '', targetAmount: '', deadline: '' });
+  const [goalAnalysis, setGoalAnalysis] = useState<{
+    achievable: boolean;
+    requiredMonthly: number;
+    currentMonthlySavings: number;
+    suggestions: string[];
+  } | null>(null);
+
+  useEffect(() => {
+    if (isGoalModalOpen && newGoal.targetAmount && newGoal.deadline) {
+      const tempGoal: Goal = {
+        id: 'temp',
+        userId: user?.uid || '',
+        title: newGoal.title,
+        targetAmount: Number(newGoal.targetAmount),
+        currentAmount: 0,
+        deadline: new Date(newGoal.deadline).getTime(),
+        createdAt: Date.now(),
+      };
+      const analysis = analysisService.analyzeGoal(tempGoal, profile, expenses);
+      setGoalAnalysis(analysis);
+    } else {
+      setGoalAnalysis(null);
+    }
+  }, [newGoal.targetAmount, newGoal.deadline, isGoalModalOpen, profile, expenses]);
 
   // AI Chat State
   const [isChatOpen, setIsChatOpen] = useState(false);
@@ -88,12 +124,12 @@ export default function Dashboard() {
           description: parsed.description,
           timestamp: Date.now(),
         };
-        storageService.addExpense(newExpense);
+        storageService.addExpense(user.uid, newExpense);
         setExpenses(prev => [newExpense, ...prev]);
         setQuickInput('');
         
         // Refresh categories to update progress bars
-        setCategories(storageService.getCategories());
+        setCategories(storageService.getCategories(user.uid));
       }
     } catch (err) {
       console.error('Quick add error:', err);
@@ -106,10 +142,14 @@ export default function Dashboard() {
     if (!user) return;
 
     setIsLoading(true);
-    const currentProfile = storageService.getUserProfile();
-    const currentCategories = storageService.getCategories();
-    const currentExpenses = storageService.getExpenses();
-    const currentGoals = storageService.getGoals();
+    const currentProfile = storageService.getUserProfile(user.uid);
+    if (!currentProfile) {
+      navigate('/onboarding');
+      return;
+    }
+    const currentCategories = storageService.getCategories(user.uid);
+    const currentExpenses = storageService.getExpenses(user.uid);
+    const currentGoals = storageService.getGoals(user.uid);
     
     setProfile(currentProfile);
     setCategories(currentCategories);
@@ -119,9 +159,10 @@ export default function Dashboard() {
     // Generate dynamic alerts and suggestions
     const anomalies = analysisService.detectAnomalies(currentExpenses);
     const suggestions = analysisService.generateSuggestions(currentExpenses, currentCategories);
+    const longTermTrends = analysisService.analyzeLongTermTrends(currentExpenses);
     const forecast = analysisService.forecastSpending(currentExpenses, currentProfile?.monthlyIncome || 0);
     
-    const dynamicAlerts: AIAlert[] = [...anomalies, ...suggestions];
+    const dynamicAlerts: AIAlert[] = [...anomalies, ...suggestions, ...longTermTrends];
     
     // Add goal-based alerts
     currentGoals.forEach(goal => {
@@ -173,7 +214,7 @@ export default function Dashboard() {
   const handleQuickAdd = async (category: string) => {
     if (!user) return;
     try {
-      storageService.addExpense({
+      storageService.addExpense(user.uid, {
         id: Math.random().toString(36).substr(2, 9),
         userId: user.uid,
         amount: 0,
@@ -181,8 +222,9 @@ export default function Dashboard() {
         category,
         timestamp: Date.now(),
       });
-      setExpenses(storageService.getExpenses());
+      setExpenses(storageService.getExpenses(user.uid));
       setShowReminder(false);
+      setCategories(storageService.getCategories(user.uid));
     } catch (err) {
       console.error('Failed to quick add expense', err);
     }
@@ -201,10 +243,27 @@ export default function Dashboard() {
       createdAt: Date.now(),
     };
 
-    storageService.addGoal(goal);
+    storageService.addGoal(user.uid, goal);
     setGoals(prev => [goal, ...prev]);
     setIsGoalModalOpen(false);
     setNewGoal({ title: '', targetAmount: '', deadline: '' });
+    setGoalAnalysis(null);
+  };
+
+  const handleDeleteGoal = (e: React.MouseEvent, id: string) => {
+    e.stopPropagation();
+    if (!user) return;
+    storageService.deleteGoal(user.uid, id);
+    setGoals(prev => prev.filter(g => g.id !== id));
+    if (selectedGoal?.id === id) setSelectedGoal(null);
+  };
+
+  const handleToggleLikeGoal = (e: React.MouseEvent, goal: Goal) => {
+    e.stopPropagation();
+    if (!user) return;
+    const updatedGoal = { ...goal, isLiked: !goal.isLiked };
+    storageService.updateGoal(user.uid, updatedGoal);
+    setGoals(prev => prev.map(g => g.id === goal.id ? updatedGoal : g));
   };
 
   const handleSendMessage = async () => {
@@ -220,7 +279,7 @@ export default function Dashboard() {
       const model = "gemini-3-flash-preview";
       
       const context = `
-        You are a financial assistant for BudgetMind AI Intelligence System.
+        You are a financial assistant for Arthmitra AI Intelligence System.
         User's current financial status:
         - Monthly Budget: ₹${budget}
         - Total Spent: ₹${totalSpent}
@@ -272,6 +331,24 @@ export default function Dashboard() {
 
   return (
     <div className="max-w-6xl mx-auto space-y-12 pb-20 animate-in fade-in duration-700">
+      {/* Govt Official Header */}
+      <div className="govt-header -mx-4 sm:-mx-8 px-4 sm:px-8 py-4 flex items-center justify-between mb-8">
+        <div className="flex items-center gap-3">
+          <div className="bg-white p-1.5 rounded-lg shadow-sm">
+            <div className="w-8 h-8 bg-indigo-900 rounded flex items-center justify-center text-white font-serif text-xl">A</div>
+          </div>
+          <div>
+            <h1 className="text-lg font-bold tracking-tight leading-tight">ARTHMITRA</h1>
+            <p className="text-[10px] font-bold text-orange-400 uppercase tracking-widest">AI Financial Intelligence System</p>
+          </div>
+        </div>
+        <div className="hidden md:flex items-center gap-6 text-[10px] font-bold uppercase tracking-widest text-indigo-200">
+          <span className="flex items-center gap-1.5"><Activity className="w-3 h-3" /> Real-time Analysis</span>
+          <span className="flex items-center gap-1.5"><Sparkles className="w-3 h-3" /> AI Powered</span>
+          <span className="flex items-center gap-1.5 text-orange-400"><CheckCircle2 className="w-3 h-3" /> Verified Secure</span>
+        </div>
+      </div>
+
       {!profile && (
         <motion.div
           initial={{ opacity: 0, y: -20 }}
@@ -308,13 +385,24 @@ export default function Dashboard() {
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-8">
         <div>
+          <div className="govt-badge mb-3">OFFICIAL DASHBOARD</div>
           <h1 className="text-4xl font-extrabold text-slate-900 tracking-tight font-display">
-            BudgetMind <span className="text-slate-400 font-medium">Intelligence</span>
+            Financial <span className="text-indigo-600">Intelligence</span>
           </h1>
-          <p className="text-slate-500 mt-2 font-medium text-lg">Welcome back, {user?.email?.split('@')[0]}. Here's your financial analysis.</p>
+          <p className="text-slate-500 mt-2 font-medium text-lg italic">
+            “We classify user expenses into meaningful categories to analyze spending behavior and generate personalized insights.”
+          </p>
+          <p className="text-slate-400 mt-1 text-sm font-medium">Welcome back, {profile?.displayName || user?.email?.split('@')[0]}. Here is your official report.</p>
         </div>
         
         <div className="flex items-center gap-4">
+          <button 
+            onClick={() => navigate('/statement-upload')}
+            className="official-button-secondary flex items-center gap-2.5"
+          >
+            <FileUp className="w-5 h-5" />
+            Statement AI
+          </button>
           <button 
             onClick={() => navigate('/add-expense')}
             className="official-button-primary flex items-center gap-2.5"
@@ -535,21 +623,47 @@ export default function Dashboard() {
                 const analysis = analysisService.analyzeGoal(goal, profile, expenses);
                 const progress = Math.min((goal.currentAmount / goal.targetAmount) * 100, 100);
                 return (
-                  <div key={goal.id} className="p-8 rounded-3xl border border-slate-100 bg-slate-50/50 space-y-6 hover:bg-white hover:shadow-xl hover:shadow-slate-200/40 transition-all duration-300 group">
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <h3 className="font-extrabold text-slate-900 text-lg">{goal.title}</h3>
+                  <div 
+                    key={goal.id} 
+                    onClick={() => setSelectedGoal(goal)}
+                    className="p-8 rounded-3xl border border-slate-100 bg-slate-50/50 space-y-6 hover:bg-white hover:shadow-xl hover:shadow-slate-200/40 transition-all duration-300 group cursor-pointer relative overflow-hidden"
+                  >
+                    <div className="flex justify-between items-start relative z-10">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                          <h3 className="font-extrabold text-slate-900 text-lg">{goal.title}</h3>
+                          {goal.isLiked && <Heart className="w-4 h-4 text-rose-500 fill-rose-500" />}
+                        </div>
                         <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">Target: ₹{goal.targetAmount.toLocaleString()}</p>
                       </div>
-                      <div className={cn(
-                        "px-3 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-widest",
-                        analysis.achievable ? "bg-emerald-100 text-emerald-700" : "bg-rose-100 text-rose-700"
-                      )}>
-                        {analysis.achievable ? "On Track" : "At Risk"}
+                      <div className="flex flex-col items-end gap-2">
+                        <div className={cn(
+                          "px-3 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-widest",
+                          analysis.achievable ? "bg-emerald-100 text-emerald-700" : "bg-rose-100 text-rose-700"
+                        )}>
+                          {analysis.achievable ? "On Track" : "At Risk"}
+                        </div>
+                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <button 
+                            onClick={(e) => handleToggleLikeGoal(e, goal)}
+                            className={cn(
+                              "p-2 rounded-lg transition-colors",
+                              goal.isLiked ? "bg-rose-50 text-rose-600" : "bg-slate-100 text-slate-400 hover:text-rose-500"
+                            )}
+                          >
+                            <Heart className={cn("w-4 h-4", goal.isLiked && "fill-rose-500")} />
+                          </button>
+                          <button 
+                            onClick={(e) => handleDeleteGoal(e, goal.id)}
+                            className="p-2 rounded-lg bg-slate-100 text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
                       </div>
                     </div>
                     
-                    <div className="space-y-3">
+                    <div className="space-y-3 relative z-10">
                       <div className="flex justify-between text-xs font-bold">
                         <span className="text-slate-500 uppercase tracking-widest">{progress.toFixed(0)}% Complete</span>
                         <span className="text-slate-900">₹{goal.currentAmount.toLocaleString()}</span>
@@ -564,8 +678,8 @@ export default function Dashboard() {
                       </div>
                     </div>
 
-                    <div className="pt-4 border-t border-slate-100">
-                      <p className="text-xs text-slate-500 font-medium leading-relaxed italic">
+                    <div className="pt-4 border-t border-slate-100 relative z-10">
+                      <p className="text-xs text-slate-500 font-medium leading-relaxed italic line-clamp-1">
                         {analysis.suggestions[0]}
                       </p>
                     </div>
@@ -686,6 +800,31 @@ export default function Dashboard() {
                     />
                   </div>
                 </div>
+
+                {goalAnalysis && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                    className={cn(
+                      "p-4 rounded-2xl border space-y-3",
+                      goalAnalysis.achievable ? "bg-emerald-50 border-emerald-100" : "bg-rose-50 border-rose-100"
+                    )}
+                  >
+                    <div className="flex items-center gap-2">
+                      <Sparkles className={cn("w-4 h-4", goalAnalysis.achievable ? "text-emerald-600" : "text-rose-600")} />
+                      <span className="text-xs font-bold uppercase tracking-widest text-slate-900">AI Analysis</span>
+                    </div>
+                    <div className="space-y-2">
+                      <div className="pt-1">
+                        {goalAnalysis.suggestions.map((s, i) => (
+                          <p key={i} className="text-[11px] font-medium leading-relaxed text-slate-700 italic mb-2 last:mb-0">
+                            {s}
+                          </p>
+                        ))}
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
               </div>
 
               <button 
@@ -694,6 +833,117 @@ export default function Dashboard() {
               >
                 Create Goal
               </button>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Goal Detail Modal */}
+      <AnimatePresence>
+        {selectedGoal && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 20 }}
+              className="bg-white rounded-3xl shadow-2xl max-w-lg w-full overflow-hidden"
+            >
+              <div className="relative h-32 bg-indigo-900 p-8">
+                <button 
+                  onClick={() => setSelectedGoal(null)}
+                  className="absolute top-6 right-6 text-white/60 hover:text-white"
+                >
+                  <X className="w-6 h-6" />
+                </button>
+                <div className="flex items-center gap-4">
+                  <div className="bg-white/10 p-3 rounded-2xl backdrop-blur-md">
+                    <Target className="w-8 h-8 text-white" />
+                  </div>
+                  <div>
+                    <h2 className="text-2xl font-bold text-white">{selectedGoal.title}</h2>
+                    <p className="text-indigo-300 text-xs font-bold uppercase tracking-widest">Financial Goal Details</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="p-8 space-y-8">
+                <div className="grid grid-cols-2 gap-6">
+                  <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Target Amount</p>
+                    <p className="text-xl font-extrabold text-slate-900">₹{selectedGoal.targetAmount.toLocaleString()}</p>
+                  </div>
+                  <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Deadline</p>
+                    <p className="text-xl font-extrabold text-slate-900 flex items-center gap-2">
+                      <Calendar className="w-4 h-4 text-indigo-600" />
+                      {new Date(selectedGoal.deadline).toLocaleDateString()}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <div className="flex justify-between items-end">
+                    <div>
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Current Progress</p>
+                      <p className="text-2xl font-extrabold text-slate-900">₹{selectedGoal.currentAmount.toLocaleString()}</p>
+                    </div>
+                    <p className="text-sm font-bold text-indigo-600">
+                      {((selectedGoal.currentAmount / selectedGoal.targetAmount) * 100).toFixed(1)}%
+                    </p>
+                  </div>
+                  <div className="h-3 w-full bg-slate-100 rounded-full overflow-hidden">
+                    <div 
+                      className="h-full bg-indigo-600 rounded-full"
+                      style={{ width: `${Math.min((selectedGoal.currentAmount / selectedGoal.targetAmount) * 100, 100)}%` }}
+                    />
+                  </div>
+                </div>
+
+                <div className="p-6 bg-indigo-50 rounded-3xl border border-indigo-100 space-y-4">
+                  <div className="flex items-center gap-2">
+                    <Sparkles className="w-5 h-5 text-indigo-600" />
+                    <h3 className="text-sm font-bold text-slate-900 uppercase tracking-widest">AI Financial Plan</h3>
+                  </div>
+                  
+                  <div className="space-y-3">
+                    <div className="flex justify-between items-center py-2 border-b border-indigo-200/50">
+                      <span className="text-xs font-medium text-slate-600">Required Monthly Savings:</span>
+                      <span className="text-sm font-bold text-indigo-700">
+                        ₹{Math.round(analysisService.analyzeGoal(selectedGoal, profile, expenses).requiredMonthly).toLocaleString()}
+                      </span>
+                    </div>
+                    <div className="space-y-2">
+                      {analysisService.analyzeGoal(selectedGoal, profile, expenses).suggestions.map((s, i) => (
+                        <div key={i} className="flex gap-2">
+                          <div className="w-1.5 h-1.5 rounded-full bg-indigo-400 mt-1.5 shrink-0" />
+                          <p className="text-xs text-slate-700 leading-relaxed italic">{s}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex gap-4">
+                  <button 
+                    onClick={() => handleToggleLikeGoal({ stopPropagation: () => {} } as any, selectedGoal)}
+                    className={cn(
+                      "flex-1 py-4 rounded-2xl font-bold flex items-center justify-center gap-2 transition-all",
+                      selectedGoal.isLiked 
+                        ? "bg-rose-50 text-rose-600 border border-rose-100" 
+                        : "bg-slate-50 text-slate-600 border border-slate-100 hover:bg-slate-100"
+                    )}
+                  >
+                    <Heart className={cn("w-5 h-5", selectedGoal.isLiked && "fill-rose-500")} />
+                    {selectedGoal.isLiked ? "Prioritized" : "Prioritize Goal"}
+                  </button>
+                  <button 
+                    onClick={(e) => handleDeleteGoal(e, selectedGoal.id)}
+                    className="p-4 rounded-2xl bg-rose-50 text-rose-600 border border-rose-100 hover:bg-rose-100 transition-all"
+                  >
+                    <Trash2 className="w-5 h-5" />
+                  </button>
+                </div>
+              </div>
             </motion.div>
           </div>
         )}
@@ -712,7 +962,7 @@ export default function Dashboard() {
               <div className="bg-indigo-600 p-4 text-white flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <Sparkles className="w-5 h-5" />
-                  <span className="font-bold">SmartBudget AI Assistant</span>
+                  <span className="font-bold">Arthmitra AI Assistant</span>
                 </div>
                 <button onClick={() => setIsChatOpen(false)} className="hover:bg-white/20 p-1 rounded-lg">
                   <X className="w-5 h-5" />
@@ -812,7 +1062,7 @@ export default function Dashboard() {
                 ].map((btn) => (
                   <button
                     key={btn.label}
-                    onClick={() => btn.label === 'None' ? setShowReminder(false) : handleQuickAdd(btn.label === 'Travel' ? 'Transport' : btn.label)}
+                    onClick={() => btn.label === 'None' ? setShowReminder(false) : handleQuickAdd(btn.label === 'Travel' ? 'Transport' : btn.label === 'Food' ? 'Food' : btn.label)}
                     className={cn(
                       "flex flex-col items-center gap-2 p-3 rounded-2xl border border-slate-100 text-slate-600 transition-all font-bold text-[10px]",
                       btn.color
